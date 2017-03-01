@@ -276,6 +276,7 @@ private:
     unsigned int biasTen;
     unsigned int notechEn;
     std::string serNo;
+    unsigned int devIdx;
 
 public:
 

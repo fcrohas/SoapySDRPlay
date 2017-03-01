@@ -22,10 +22,10 @@
  * THE SOFTWARE.
  */
 
-#define RF_GAIN_IN_MENU
+//#define RF_GAIN_IN_MENU
 
 #include "SoapySDRPlay.hpp"
-
+#include <iostream>
 extern bool deviceSelected;    // global declared in Registration.cpp
 
 SoapySDRPlay::SoapySDRPlay(const SoapySDR::Kwargs &args)
@@ -38,7 +38,7 @@ SoapySDRPlay::SoapySDRPlay(const SoapySDR::Kwargs &args)
         SoapySDR_logf(SOAPY_SDR_WARNING, "Can't find Dev string in args");
         return;
     }
-    unsigned int devIdx = label.at(posidx + 11) - 0x30;
+    devIdx = label.at(posidx + 11) - 0x30;
     hwVer = label.at(posidx + 16) - 0x30;
     serNo = label.substr(posidx + 16, 20);
     size_t poscom = serNo.find(",");
@@ -146,18 +146,53 @@ size_t SoapySDRPlay::getNumChannels(const int dir) const
 std::vector<std::string> SoapySDRPlay::listAntennas(const int direction, const size_t channel) const
 {
     std::vector<std::string> antennas;
-    antennas.push_back("RX");
+    if (hwVer == 1) {
+        antennas.push_back("RX");
+    } else {
+        antennas.push_back("Antenna A");
+        antennas.push_back("Antenna B");
+        antennas.push_back("Hi-Z");
+    }
     return antennas;
 }
 
 void SoapySDRPlay::setAntenna(const int direction, const size_t channel, const std::string &name)
 {
-    // TODO
+    // Check direction
+    if ((direction != SOAPY_SDR_RX) || (hwVer == 1)) {
+        return;
+    }
+
+    if (name == "Antenna A") {
+        antSel = mir_sdr_RSPII_ANTENNA_A;
+        mir_sdr_RSPII_AntennaControl(antSel);
+    }
+    if (name == "Antenna B") {
+        antSel = mir_sdr_RSPII_ANTENNA_B;
+        mir_sdr_RSPII_AntennaControl(antSel);
+    }
+    if (name == "Hi-Z") {
+        amPort = 1;
+        mir_sdr_AmPortSelect(amPort);
+        mir_sdr_Reinit(&gRdB, 0.0, 0.0, mir_sdr_BW_Undefined, mir_sdr_IF_Undefined, mir_sdr_LO_Undefined, 4, &gRdBsystem, mir_sdr_USE_RSP_SET_GR, &sps, mir_sdr_CHANGE_AM_PORT);
+    }
 }
 
 std::string SoapySDRPlay::getAntenna(const int direction, const size_t channel) const
 {
-    return "RX";
+    if (hwVer == 1) {
+        return "RX";
+    }
+
+    if (amPort == 1) {
+        return "Hi-Z";
+    }
+    if (antSel == mir_sdr_RSPII_ANTENNA_A) {
+        return "Antenna A";
+    } else {
+        return "Antenna B";
+    }
+
 }
 
 /*******************************************************************
